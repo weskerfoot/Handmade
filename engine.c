@@ -246,62 +246,61 @@ message_loop(xcb_connection_t *display,
   int v = 0;
 
   while (running) {
-      /* Poll for events */
+    /* Poll for events */
 
-      xcb_generic_event_t *event = xcb_poll_for_event(display);
+    xcb_generic_event_t *event = xcb_poll_for_event(display);
 
-      if (event != NULL) {
-        switch (RECEIVE_EVENT(event)) {
-          case XCB_KEY_PRESS:
-              /* Quit on key press */
-              key_event = (xcb_key_press_event_t *)event;
-              printf("%u\n", key_event->detail);
-              if (key_event->detail == 24) {
-                running = 0;
-              }
-              break;
-          case XCB_EXPOSE:
-              printf("Got expose event\n");
-              exposed = 1;
-              break;
+    if (event != NULL) {
+      switch (RECEIVE_EVENT(event)) {
+        case XCB_KEY_PRESS:
+          /* Quit on key press */
+          key_event = (xcb_key_press_event_t *)event;
+          printf("%u\n", key_event->detail);
+          if (key_event->detail == 24) {
+            running = 0;
+          }
+          break;
+        case XCB_EXPOSE:
+          printf("Got expose event\n");
+          exposed = 1;
+          break;
 
-          case XCB_CONFIGURE_NOTIFY:
-              configure_notify = (xcb_configure_notify_event_t *)event;
+        case XCB_CONFIGURE_NOTIFY:
+          configure_notify = (xcb_configure_notify_event_t *)event;
 
-              cairo_surface_flush(backbuffer_surface);
-              cairo_xcb_surface_set_size(frontbuffer_surface,
-                                         configure_notify->width,
-                                         configure_notify->height);
+          cairo_surface_flush(backbuffer_surface);
+          cairo_xcb_surface_set_size(frontbuffer_surface,
+                                     configure_notify->width,
+                                     configure_notify->height);
 
-              window_height = configure_notify->height;
-              window_width = configure_notify->width;
+          window_height = configure_notify->height;
+          window_width = configure_notify->width;
 
-              printf("Got configure_notify event, w = %u, h = %u\n",
-                     window_width,
-                     window_height);
+          printf("Got configure_notify event, w = %u, h = %u\n",
+                 window_width,
+                 window_height);
 
-              break;
-          default:
-              break;
-        }
-
-        free(event);
+          break;
+        default:
+          break;
       }
+      free(event);
+    }
 
-      if (exposed) {
-        draw(backbuffer_surface,
-             v,
-             window_width,
-             window_height);
+    if (exposed) {
+      draw(backbuffer_surface,
+           v,
+           window_width,
+           window_height);
 
-        /* This is where the magic happens */
-        swapBuffers(front_cr,
-                    backbuffer_surface);
-        xcb_flush(display);
+      /* This is where the magic happens */
+      swapBuffers(front_cr,
+                  backbuffer_surface);
+      xcb_flush(display);
 
-        nanosleep(&req, &rem);
-        v++;
-      }
+      nanosleep(&req, &rem);
+      v++;
+    }
   }
 }
 

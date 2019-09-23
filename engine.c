@@ -194,6 +194,9 @@ allocWindow(xcb_connection_t *display,
                         XCB_EVENT_MASK_STRUCTURE_NOTIFY |
                         XCB_EVENT_MASK_KEY_PRESS);
 
+  /* Passed to the window to mask on events */
+  /* a single white pixel is allocated */
+  /* Actual rendering is done directly, and not using X rendering functions */
   uint32_t valwin[2] = {screen->white_pixel, eventmask};
 
   xcb_create_window(display,

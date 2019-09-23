@@ -10,6 +10,9 @@
 
 /* Macro definition to parse X server events
  * The ~0x80 is needed to get the lower 7 bits
+ * It basically sets the first 7 bits to 1, and the last to 0, then ands them
+ * which gives you the lower 7 bits!
+ * Don't ask me why they felt the need to ignore the last bit
  */
 #define RECEIVE_EVENT(ev) (ev->response_type & ~0x80)
 
@@ -247,6 +250,8 @@ message_loop(xcb_connection_t *display,
 
   while (running) {
     /* Poll for events */
+    /* This is a non blocking function call */
+    /* It will return NULL if there is no event on the queue */
 
     xcb_generic_event_t *event = xcb_poll_for_event(display);
 

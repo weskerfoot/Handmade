@@ -5,3 +5,9 @@ My attempt at following along with [https://handmadehero.org](https://handmadehe
 * Basic double buffered rendering with Cairo works
 * Basic keyboard input works
 * Basic audio using SDL2 backend works
+
+## Dependencies
+* xcb/xlib
+* libcairo
+* sdl2
+* sdl2_mixer

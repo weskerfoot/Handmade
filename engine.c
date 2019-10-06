@@ -67,10 +67,8 @@ draw(cairo_surface_t *backbuffer_surface,
   int stride = cairo_image_surface_get_stride(backbuffer_surface) / 4;
   uint32_t *data = (uint32_t *)cairo_image_surface_get_data(backbuffer_surface);
 
-  printf("Stride = %d, Height = %d\n", stride, height);
-
   for(int i = 0; i < (stride*height); i++) {
-    data[i] = setPixel(data[i], 92, 163, 82, v % 255);
+    data[i] = setPixel(data[i], -v, v, 82, 255);
   }
 
   /* Make sure that cached areas are re-read */ 
@@ -192,7 +190,7 @@ message_loop(xcb_connection_t *display,
              cairo_surface_t *frontbuffer_surface,
              cairo_t *front_cr) {
 
-  struct timespec req = genSleep(0, 12000000);
+  struct timespec req = genSleep(0, 2000000);
   struct timespec rem = genSleep(0, 0);
 
   xcb_configure_notify_event_t *configure_notify;

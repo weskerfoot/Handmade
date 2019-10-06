@@ -206,7 +206,7 @@ message_loop(xcb_connection_t *display,
   xcb_key_press_event_t *key_event;
 
   int exposed = 0;
-  int draw_buffer = 1;
+  int draw_buffer = 0;
   int running = 1;
   uint16_t window_height = screen->height_in_pixels;
   uint16_t window_width = screen->width_in_pixels;
@@ -237,6 +237,7 @@ message_loop(xcb_connection_t *display,
           window_height = expose_event->height;
 
           exposed = 1;
+
           /* Always re-draw on expose events */
           draw_buffer = 1;
           break;
@@ -247,41 +248,42 @@ message_loop(xcb_connection_t *display,
           if ((window_width != configure_notify->width) ||
               (window_height != configure_notify->height)) {
             /* Only redraw on configure_notify if the window dimensions have actually changed */
-            draw_buffer = 1;
+
             printf("Got configure_notify event, w = %u, h = %u\n",
                    window_width,
                    window_height);
             window_height = configure_notify->height;
             window_width = configure_notify->width;
+
+            draw_buffer = 1;
           }
           break;
         default:
           break;
+      }
 
-        if (draw_buffer) {
-          cairo_surface_flush(backbuffer_surface);
-          cairo_xcb_surface_set_size(frontbuffer_surface,
-                                     window_width,
-                                     window_height);
+      if (draw_buffer && exposed) {
+        cairo_surface_flush(backbuffer_surface);
+        cairo_xcb_surface_set_size(frontbuffer_surface,
+                                    window_width,
+                                    window_height);
 
-          draw_buffer = 0;
-        }
+        draw(backbuffer_surface,
+              v,
+              window_width,
+              window_height);
 
+        /* This is where the magic happens */
+        swapBuffers(front_cr,
+                    backbuffer_surface);
+        xcb_flush(display);
+
+        draw_buffer = 0;
       }
       free(event);
     }
 
     if (exposed) {
-      draw(backbuffer_surface,
-           v,
-           window_width,
-           window_height);
-
-      /* This is where the magic happens */
-      swapBuffers(front_cr,
-                  backbuffer_surface);
-      xcb_flush(display);
-
       nanosleep(&req, &rem);
       v++;
     }

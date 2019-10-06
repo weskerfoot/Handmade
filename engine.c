@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <assert.h>
 #include <SDL2/SDL.h>
 #include <cairo-xcb.h>
@@ -54,24 +55,19 @@ allocScreen(xcb_connection_t *display) {
   return screen;
 }
 
-unsigned char
-randPixel() {
-  return rand() % 255;
-}
-
 void
 draw(cairo_surface_t *backbuffer_surface,
      int v,
      uint16_t width,
      uint16_t height) {
   int stride = cairo_image_surface_get_stride(backbuffer_surface);
-  unsigned char *data = cairo_image_surface_get_data(backbuffer_surface);
+  uint32_t *data = (uint32_t *)cairo_image_surface_get_data(backbuffer_surface);
 
   /* Manpiulate the actual pixel data here */
   //memset(data, v, stride*height);
 
-  for(int i = 0; i < stride*height; i++) {
-    data[i] = randPixel();
+  for(int i = 0; i < ((stride*height)/4); i++) {
+    data[i] = setPixel(data[i], 92, 163, 82, 250);
   }
 }
 
@@ -117,7 +113,7 @@ cairo_surface_t*
 allocBackBuf(int width,
              int height) {
 
-  cairo_format_t format = CAIRO_FORMAT_RGB24;
+  cairo_format_t format = CAIRO_FORMAT_ARGB32;
 
   cairo_surface_t *surface = cairo_image_surface_create(format,
                                                         width,

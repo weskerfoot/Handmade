@@ -1,4 +1,3 @@
-
 void
 printCairoFormat(cairo_format_t format) {
   switch (format) {
@@ -36,4 +35,25 @@ printCairoFormat(cairo_format_t format) {
  */
 #define RECEIVE_EVENT(ev) (ev->response_type & ~0x80)
 
+/* Macros for setting and getting pixels */
+/* Implements premultiplied alpha channels */
+#define A(p) ((p) & 0xff000000)
+#define R(p) ((p) & 0x00ff0000)
+#define G(p) ((p) & 0x0000ff00)
+#define B(p) ((p) & 0x000000ff)
+#define setA(p, v) ((p) | ((v) << 24))
+#define setR(p, v, a) ((p) | ((uint32_t)((a) * ((v) << 16))) )
+#define setG(p, v, a) ((p) | ((uint32_t)((a) * ((v) << 8))) )
+#define setB(p, v, a) ((p) | ((uint32_t)((a) * (v))) )
 
+static uint32_t
+setPixel(uint32_t p,
+         uint8_t r,
+         uint8_t g,
+         uint8_t b,
+         uint8_t a) {
+  /* Set ARGB pixel */
+  /* Use premultiplied alpha channels */
+  float af = a / 255.0;
+  return setB(setG(setR(setA(p, a), r, af), g, af), b, af);
+}

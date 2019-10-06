@@ -60,26 +60,27 @@ draw(cairo_surface_t *backbuffer_surface,
      int v,
      uint16_t width,
      uint16_t height) {
+
+  /* Needed to ensure all pending draw operations are done */
+  cairo_surface_flush(backbuffer_surface);
+
   int stride = cairo_image_surface_get_stride(backbuffer_surface) / 4;
   uint32_t *data = (uint32_t *)cairo_image_surface_get_data(backbuffer_surface);
 
-  memset(data, 0, stride*height);
+  printf("Stride = %d, Height = %d\n", stride, height);
 
   for(int i = 0; i < (stride*height); i++) {
-    data[i] = setPixel(data[i], 92, 163, 82, 250);
+    data[i] = setPixel(data[i], 92, 163, 82, v % 255);
   }
+
+  /* Make sure that cached areas are re-read */ 
+  /* Since we modified the pixel data directly without using cairo */
+  cairo_surface_mark_dirty(backbuffer_surface);
 }
 
 void
 swapBuffers(cairo_t *front_cr,
             cairo_surface_t *backbuffer_surface) {
-
-  /* Needed to ensure all pending draw operations are done */
-  cairo_surface_flush(backbuffer_surface);
-
-  /* Make sure that cached areas are re-read */ 
-  /* Since we modified the pixel data directly without using cairo */
-  cairo_surface_mark_dirty(backbuffer_surface);
 
   cairo_set_source_surface(front_cr,
                            backbuffer_surface,
@@ -87,7 +88,6 @@ swapBuffers(cairo_t *front_cr,
                            0);
 
   cairo_paint(front_cr);
-  cairo_surface_flush(backbuffer_surface);
 }
 
 cairo_surface_t*
@@ -109,21 +109,16 @@ allocFrontBuf(xcb_connection_t *display,
 }
 
 cairo_surface_t*
-allocBackBuf(int width,
+allocBackBuf(cairo_surface_t *frontBuf,
+             int width,
              int height) {
 
   cairo_format_t format = CAIRO_FORMAT_ARGB32;
 
-  cairo_surface_t *surface = cairo_image_surface_create(format,
-                                                        width,
-                                                        height);
-
-  int stride = cairo_image_surface_get_stride(surface);
-
-  printf("Stride for image = %d\n", stride);
-
-  /* might not be needed */
-  cairo_surface_flush(surface);
+  cairo_surface_t *surface = cairo_surface_create_similar_image(frontBuf,
+                                                                format,
+                                                                width,
+                                                                height);
 
   return surface;
 }
@@ -195,10 +190,9 @@ void
 message_loop(xcb_connection_t *display,
              xcb_screen_t *screen,
              cairo_surface_t *frontbuffer_surface,
-             cairo_surface_t *backbuffer_surface,
              cairo_t *front_cr) {
 
-  struct timespec req = genSleep(0, 2000000);
+  struct timespec req = genSleep(0, 12000000);
   struct timespec rem = genSleep(0, 0);
 
   xcb_configure_notify_event_t *configure_notify;
@@ -206,12 +200,14 @@ message_loop(xcb_connection_t *display,
   xcb_key_press_event_t *key_event;
 
   int exposed = 0;
-  int draw_buffer = 0;
   int running = 1;
+
   uint16_t window_height = screen->height_in_pixels;
   uint16_t window_width = screen->width_in_pixels;
 
   int v = 0;
+
+  cairo_surface_t *backbuffer_surface;
 
   while (running) {
     /* Poll for events */
@@ -237,9 +233,6 @@ message_loop(xcb_connection_t *display,
           window_height = expose_event->height;
 
           exposed = 1;
-
-          /* Always re-draw on expose events */
-          draw_buffer = 1;
           break;
 
         case XCB_CONFIGURE_NOTIFY:
@@ -254,39 +247,42 @@ message_loop(xcb_connection_t *display,
                    window_height);
             window_height = configure_notify->height;
             window_width = configure_notify->width;
-
-            draw_buffer = 1;
           }
+          exposed = 1;
           break;
         default:
           break;
-      }
-
-      if (draw_buffer && exposed) {
-        cairo_surface_flush(backbuffer_surface);
-        cairo_xcb_surface_set_size(frontbuffer_surface,
-                                    window_width,
-                                    window_height);
-
-        draw(backbuffer_surface,
-              v,
-              window_width,
-              window_height);
-
-        /* This is where the magic happens */
-        swapBuffers(front_cr,
-                    backbuffer_surface);
-        xcb_flush(display);
-
-        draw_buffer = 0;
       }
       free(event);
     }
 
     if (exposed) {
-      nanosleep(&req, &rem);
+      /* Create a new backbuffer to render to each time */
+      backbuffer_surface = allocBackBuf(frontbuffer_surface, window_width, window_height);
+
+      /* Flush any drawing operations to the front buffer */
+      cairo_surface_flush(frontbuffer_surface);
+      cairo_xcb_surface_set_size(frontbuffer_surface,
+                                  window_width,
+                                  window_height);
+
+      draw(backbuffer_surface,
+           v,
+           window_width,
+           window_height);
+
+      /* This is where the magic happens */
+      swapBuffers(front_cr,
+                  backbuffer_surface);
+      xcb_flush(display);
+
+      /* Destroy the backbuffer surface every time */
+      cairo_surface_destroy(backbuffer_surface);
+
       v++;
     }
+
+    nanosleep(&req, &rem);
   }
 }
 
@@ -330,20 +326,10 @@ main(void) {
 
   cairo_t *front_cr = cairo_create(frontbuffer_surface);
 
-  /* Allocate backbuffer (raw pixel buffer) */
-  cairo_surface_t *backbuffer_surface =
-    allocBackBuf(window_width, window_height);
-
-  cairo_t *back_cr = cairo_create(backbuffer_surface);
-
   message_loop(display,
                screen,
                frontbuffer_surface,
-               backbuffer_surface,
                front_cr);
-
-  cairo_destroy(back_cr);
-  cairo_surface_destroy(backbuffer_surface);
 
   cairo_destroy(front_cr);
   cairo_surface_destroy(frontbuffer_surface);

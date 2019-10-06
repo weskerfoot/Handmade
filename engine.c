@@ -202,9 +202,11 @@ message_loop(xcb_connection_t *display,
   struct timespec rem = genSleep(0, 0);
 
   xcb_configure_notify_event_t *configure_notify;
+  xcb_expose_event_t *expose_event;
   xcb_key_press_event_t *key_event;
 
   int exposed = 0;
+  int draw_buffer = 1;
   int running = 1;
   uint16_t window_height = screen->height_in_pixels;
   uint16_t window_width = screen->width_in_pixels;
@@ -230,27 +232,41 @@ message_loop(xcb_connection_t *display,
           break;
         case XCB_EXPOSE:
           printf("Got expose event\n");
+          expose_event = (xcb_expose_event_t *)event;
+          window_width = expose_event->width;
+          window_height = expose_event->height;
+
           exposed = 1;
+          /* Always re-draw on expose events */
+          draw_buffer = 1;
           break;
 
         case XCB_CONFIGURE_NOTIFY:
           configure_notify = (xcb_configure_notify_event_t *)event;
 
-          cairo_surface_flush(backbuffer_surface);
-          cairo_xcb_surface_set_size(frontbuffer_surface,
-                                     configure_notify->width,
-                                     configure_notify->height);
-
-          window_height = configure_notify->height;
-          window_width = configure_notify->width;
-
-          printf("Got configure_notify event, w = %u, h = %u\n",
-                 window_width,
-                 window_height);
-
+          if ((window_width != configure_notify->width) ||
+              (window_height != configure_notify->height)) {
+            /* Only redraw on configure_notify if the window dimensions have actually changed */
+            draw_buffer = 1;
+            printf("Got configure_notify event, w = %u, h = %u\n",
+                   window_width,
+                   window_height);
+            window_height = configure_notify->height;
+            window_width = configure_notify->width;
+          }
           break;
         default:
           break;
+
+        if (draw_buffer) {
+          cairo_surface_flush(backbuffer_surface);
+          cairo_xcb_surface_set_size(frontbuffer_surface,
+                                     window_width,
+                                     window_height);
+
+          draw_buffer = 0;
+        }
+
       }
       free(event);
     }

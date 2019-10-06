@@ -294,12 +294,12 @@ int
 main(void) {
   srand(time(NULL));
 
-  if (initialize_sound() != 0) {
+  if (initializeSound() != 0) {
     /* FIXME should work without sound later */
     exit(1);
   }
 
-  play_file("./sample.wav");
+  playFile("./sample.wav");
 
   /* Open up the display */
   xcb_connection_t *display = allocDisplay();

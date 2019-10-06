@@ -2,7 +2,7 @@
 /* It is all built on SDL2, since ALSA and pulse are a bit too low level */
 
 int
-initialize_sound(void) {
+initializeSound(void) {
   uint32_t sdl_flag = SDL_INIT_AUDIO;
   if (SDL_Init(sdl_flag) != 0) {
     SDL_Log("Could not initialize audio subsystem!");
@@ -12,7 +12,7 @@ initialize_sound(void) {
 }
 
 void
-play_file(char *filename) {
+playFile(char *filename) {
   SDL_AudioSpec wavspec;
   uint32_t wavlength;
   uint8_t *wavbuf;

@@ -60,13 +60,12 @@ draw(cairo_surface_t *backbuffer_surface,
      int v,
      uint16_t width,
      uint16_t height) {
-  int stride = cairo_image_surface_get_stride(backbuffer_surface);
+  int stride = cairo_image_surface_get_stride(backbuffer_surface) / 4;
   uint32_t *data = (uint32_t *)cairo_image_surface_get_data(backbuffer_surface);
 
-  /* Manpiulate the actual pixel data here */
-  //memset(data, v, stride*height);
+  memset(data, 0, stride*height);
 
-  for(int i = 0; i < ((stride*height)/4); i++) {
+  for(int i = 0; i < (stride*height); i++) {
     data[i] = setPixel(data[i], 92, 163, 82, 250);
   }
 }

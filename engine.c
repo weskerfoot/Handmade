@@ -57,9 +57,10 @@ allocScreen(xcb_connection_t *display) {
 
 void
 draw(cairo_surface_t *backbuffer_surface,
-     int v,
      uint16_t width,
      uint16_t height) {
+
+  static uint32_t offset = 0;
 
   /* Needed to ensure all pending draw operations are done */
   cairo_surface_flush(backbuffer_surface);
@@ -68,12 +69,18 @@ draw(cairo_surface_t *backbuffer_surface,
   uint32_t *data = (uint32_t *)cairo_image_surface_get_data(backbuffer_surface);
 
   for(int i = 0; i < (stride*height); i++) {
-    data[i] = setPixel(data[i], -v, v, 82, 255);
+    data[i] = setPixel(data[i], 0, 40, 82, 255);
+  }
+
+  for(int i = offset * stride; i < (stride*height); i++) {
+    data[i] = setPixel(data[i], 255, 0, 0, 255);
   }
 
   /* Make sure that cached areas are re-read */ 
   /* Since we modified the pixel data directly without using cairo */
   cairo_surface_mark_dirty(backbuffer_surface);
+
+  offset = (offset + 1) % height;
 }
 
 void
@@ -190,7 +197,7 @@ message_loop(xcb_connection_t *display,
              cairo_surface_t *frontbuffer_surface,
              cairo_t *front_cr) {
 
-  struct timespec req = genSleep(0, 2000000);
+  struct timespec req = genSleep(0, 100000);
   struct timespec rem = genSleep(0, 0);
 
   xcb_configure_notify_event_t *configure_notify;
@@ -202,8 +209,6 @@ message_loop(xcb_connection_t *display,
 
   uint16_t window_height = screen->height_in_pixels;
   uint16_t window_width = screen->width_in_pixels;
-
-  int v = 0;
 
   cairo_surface_t *backbuffer_surface;
 
@@ -265,7 +270,6 @@ message_loop(xcb_connection_t *display,
                                   window_height);
 
       draw(backbuffer_surface,
-           v,
            window_width,
            window_height);
 
@@ -276,8 +280,6 @@ message_loop(xcb_connection_t *display,
 
       /* Destroy the backbuffer surface every time */
       cairo_surface_destroy(backbuffer_surface);
-
-      v++;
     }
 
     nanosleep(&req, &rem);
